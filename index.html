@@ -41,9 +41,8 @@ h2{font-size:15px;margin:14px 0 8px;color:#e0d8ff}
 .row{display:flex;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,.12);border-radius:12px;margin-bottom:6px}
 .row.me{background:#ffd23f;color:#2d1b78;font-weight:800}
 #cv{display:block;margin:0 auto;border-radius:12px;touch-action:none;background:#1b1146}
-.pad{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:10px}
-.pad div{display:flex;gap:8px}
-.pad button{width:64px;height:54px;font-size:22px;border:0;border-radius:14px;background:rgba(255,255,255,.2);color:#fff}
+.pad{display:flex;justify-content:center;gap:10px;margin-top:10px}
+.pad button{width:64px;height:50px;font-size:22px;border:0;border-radius:14px;background:rgba(255,255,255,.2);color:#fff}
 .rope{display:flex;align-items:center;gap:8px;font-size:28px;margin:14px 0 22px}
 .track{flex:1;height:14px;background:rgba(255,255,255,.2);border-radius:9px;position:relative}
 .track i{position:absolute;top:-10px;font-style:normal;font-size:26px;transition:left .3s;transform:translateX(-50%)}
@@ -285,9 +284,9 @@ function snakeStart() {
   stopAll(); playing = true;
   G = { C: 12, R: 14, s: [[6, 10], [6, 11], [6, 12]], d: [0, -1], nd: [0, -1], n: 0, f: [] };
   view(backBtn("home()") + '<div id="sq" style="text-align:center;font-size:28px;font-weight:900;margin:4px 0"></div><canvas id="cv"></canvas>' +
-    '<div class="pad"><button onclick="dir(0,-1)">▲</button><div><button onclick="dir(-1,0)">◀</button><button onclick="dir(0,1)">▼</button><button onclick="dir(1,0)">▶</button></div></div>');
-  var cv = $("cv"), w = Math.min($("view").clientWidth - 32, 360);
-  G.c = Math.floor(w / G.C); cv.width = G.c * G.C; cv.height = G.c * G.R; G.x = cv.getContext("2d");
+    '<div class="pad"><button onclick="dir(-1,0)">◀</button><button onclick="dir(0,-1)">▲</button><button onclick="dir(0,1)">▼</button><button onclick="dir(1,0)">▶</button></div>');
+  var cv = $("cv"), w = $("view").clientWidth - 32, hh = $("view").clientHeight - 190;
+  G.c = Math.max(16, Math.floor(Math.min(w / G.C, hh / G.R, 32))); cv.width = G.c * G.C; cv.height = G.c * G.R; G.x = cv.getContext("2d");
   var sx = 0, sy = 0;
   cv.addEventListener("touchstart", function (e) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; });
   cv.addEventListener("touchend", function (e) {
@@ -313,12 +312,29 @@ function tick() {
   if (f) { G.n++; add(2); snakeQ(); } else G.s.pop();
   draw();
 }
+function rr(g, x, y, w, h, q) {
+  g.beginPath(); g.moveTo(x + q, y); g.arcTo(x + w, y, x + w, y + h, q); g.arcTo(x + w, y + h, x, y + h, q); g.arcTo(x, y + h, x, y, q); g.arcTo(x, y, x + w, y, q); g.closePath(); g.fill();
+}
 function draw() {
   var c = G.c, g = G.x;
   g.fillStyle = "#1b1146"; g.fillRect(0, 0, c * G.C, c * G.R);
   g.font = "bold " + Math.floor(c * 0.6) + "px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
-  G.f.forEach(function (o) { g.fillStyle = "#fff"; g.fillRect(o.x * c + 1, o.y * c + 1, c - 2, c - 2); g.fillStyle = "#2d1b78"; g.fillText(o.v, o.x * c + c / 2, o.y * c + c / 2); });
-  G.s.forEach(function (p, i) { g.fillStyle = i ? "#22c55e" : "#bbf7d0"; g.fillRect(p[0] * c + 1, p[1] * c + 1, c - 2, c - 2); });
+  G.f.forEach(function (o) { g.fillStyle = "#fff"; rr(g, o.x * c + 1, o.y * c + 1, c - 2, c - 2, c * 0.25); g.fillStyle = "#2d1b78"; g.fillText(o.v, o.x * c + c / 2, o.y * c + c / 2); });
+  var n = G.s.length;
+  for (var i = n - 1; i >= 1; i--) {
+    var p = G.s[i], pad = i === n - 1 ? c * 0.2 : c * 0.07;
+    g.fillStyle = i % 2 ? "#22c55e" : "#16a34a";
+    rr(g, p[0] * c + pad, p[1] * c + pad, c - 2 * pad, c - 2 * pad, c * 0.3);
+  }
+  var hd = G.s[0], hx = hd[0] * c, hy = hd[1] * c, cx = hx + c / 2, cy = hy + c / 2, dx = G.d[0], dy = G.d[1];
+  g.strokeStyle = "#ef4444"; g.lineWidth = Math.max(2, c * 0.08);
+  g.beginPath(); g.moveTo(cx + dx * c * 0.45, cy + dy * c * 0.45); g.lineTo(cx + dx * c * 0.85, cy + dy * c * 0.85); g.stroke();
+  g.fillStyle = "#4ade80"; rr(g, hx + 1, hy + 1, c - 2, c - 2, c * 0.42);
+  [-1, 1].forEach(function (k) {
+    var ex = cx + dx * c * 0.15 + (-dy) * k * c * 0.22, ey = cy + dy * c * 0.15 + dx * k * c * 0.22;
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(ex, ey, c * 0.17, 0, 6.3); g.fill();
+    g.fillStyle = "#111"; g.beginPath(); g.arc(ex + dx * c * 0.05, ey + dy * c * 0.05, c * 0.08, 0, 6.3); g.fill();
+  });
 }
 function snakeEnd() {
   stopAll();

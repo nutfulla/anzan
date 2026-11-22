@@ -40,6 +40,13 @@ h2{font-size:15px;margin:14px 0 8px;color:#e0d8ff}
 .back{background:none;border:0;color:#e0d8ff;font-size:15px;padding:6px 0;text-align:left}
 .row{display:flex;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,.12);border-radius:12px;margin-bottom:6px}
 .row.me{background:#ffd23f;color:#2d1b78;font-weight:800}
+#cv{display:block;margin:0 auto;border-radius:12px;touch-action:none;background:#1b1146}
+.pad{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:10px}
+.pad div{display:flex;gap:8px}
+.pad button{width:64px;height:54px;font-size:22px;border:0;border-radius:14px;background:rgba(255,255,255,.2);color:#fff}
+.rope{display:flex;align-items:center;gap:8px;font-size:28px;margin:14px 0 22px}
+.track{flex:1;height:14px;background:rgba(255,255,255,.2);border-radius:9px;position:relative}
+.track i{position:absolute;top:-10px;font-style:normal;font-size:26px;transition:left .3s;transform:translateX(-50%)}
 #modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:20px;z-index:9}
 #modal>div{background:#2d1b78;border-radius:20px;padding:20px;max-width:360px;text-align:center}
 </style>
@@ -108,7 +115,9 @@ setInterval(function () { if (playing && !PREMIUM) { S.sec++; save(); if (S.sec 
 
 function home() {
   stopAll();
-  view('<h1>O‘yinlar</h1><div style="color:#e0d8ff;font-size:14px;margin-bottom:10px">Til o‘yinlari</div>' +
+  view('<h1>O‘yinlar</h1>' +
+    card("🐍", "Ilon", "To‘g‘ri sonni yeng, ilon o‘sadi", "snakeStart()") +
+    card("🪢", "Arqon tortish", "Kompyuterga qarshi tez hisoblang", "tugStart()") +
     card("🇬🇧", "Ingliz tili", "Hayvonlar, ranglar, sonlar", "lang('en')") +
     card("📗", "Arab tili", "Alifbo, hayvonlar, ranglar, sonlar", "lang('ar')"));
 }
@@ -156,8 +165,9 @@ function speak(t, l) {
 function replay() { speak(Q.cur.say, Q.lang); }
 
 function mathQ() {
-  var a = rnd(2, 20), b = rnd(2, 12), op = ["+", "−", "×"][rnd(0, 2)], r;
+  var a = rnd(2, 20), b = rnd(2, 12), op = ["+", "−", "×", "÷"][rnd(0, 3)], r;
   if (op === "×") { a = rnd(2, 9); r = a * b; }
+  else if (op === "÷") { r = rnd(2, 9); b = rnd(2, 9); a = r * b; }
   else if (op === "+") r = a + b;
   else { if (b > a) { var t = a; a = b; b = t; } r = a - b; }
   var s = {}; s[r] = 1; var o = [r];
@@ -261,6 +271,93 @@ function anzanCheck() {
     seq.map(function (v, i) { return (i ? (v < 0 ? " − " : " + ") : "") + Math.abs(v); }).join("") + ' = ' + tot + '</div></div><button class="big" onclick="anzanSet()">🔁 Yana o‘ynash</button>');
 }
 
+/* ---------- Ilon va Arqon tortish ---------- */
+function resultView(e, t, s, a, b) {
+  playing = false;
+  view('<div class="mid"><div style="font-size:70px">' + e + '</div><h1>' + t + '</h1><div>' + s + '</div></div><button class="big" onclick="' + a + '()">🔁 Yana o‘ynash</button><button class="back" style="margin-top:10px;text-align:center" onclick="' + b + '()">Orqaga</button>');
+}
+var G = {};
+function free(x, y) {
+  return !G.s.some(function (p) { return p[0] === x && p[1] === y; }) && !G.f.some(function (o) { return o.x === x && o.y === y; });
+}
+function snakeStart() {
+  if (!gate()) return;
+  stopAll(); playing = true;
+  G = { C: 12, R: 14, s: [[6, 10], [6, 11], [6, 12]], d: [0, -1], nd: [0, -1], n: 0, f: [] };
+  view(backBtn("home()") + '<div id="sq" style="text-align:center;font-size:28px;font-weight:900;margin:4px 0"></div><canvas id="cv"></canvas>' +
+    '<div class="pad"><button onclick="dir(0,-1)">▲</button><div><button onclick="dir(-1,0)">◀</button><button onclick="dir(0,1)">▼</button><button onclick="dir(1,0)">▶</button></div></div>');
+  var cv = $("cv"), w = Math.min($("view").clientWidth - 32, 360);
+  G.c = Math.floor(w / G.C); cv.width = G.c * G.C; cv.height = G.c * G.R; G.x = cv.getContext("2d");
+  var sx = 0, sy = 0;
+  cv.addEventListener("touchstart", function (e) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; });
+  cv.addEventListener("touchend", function (e) {
+    var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+    if (Math.abs(dx) > Math.abs(dy)) dir(dx > 0 ? 1 : -1, 0); else dir(0, dy > 0 ? 1 : -1);
+  });
+  snakeQ(); draw();
+  timers.push(setInterval(tick, 280));
+}
+function dir(x, y) { if (x === -G.d[0] && y === -G.d[1]) return; G.nd = [x, y]; }
+function snakeQ() {
+  var q = mathQ(); $("sq").textContent = q.p; G.f = [];
+  q.o.forEach(function (v, k) { var x, y; do { x = rnd(0, G.C - 1); y = rnd(0, G.R - 1); } while (!free(x, y)); G.f.push({ x: x, y: y, v: v, ok: k === q.a }); });
+}
+function tick() {
+  G.d = G.nd;
+  var h = G.s[0], x = h[0] + G.d[0], y = h[1] + G.d[1];
+  if (x < 0 || y < 0 || x >= G.C || y >= G.R || G.s.some(function (p) { return p[0] === x && p[1] === y; })) return snakeEnd();
+  var f = null; G.f.forEach(function (o) { if (o.x === x && o.y === y) f = o; });
+  if (f && !f.ok) return snakeEnd();
+  G.s.unshift([x, y]);
+  if (f) { G.n++; add(2); snakeQ(); } else G.s.pop();
+  draw();
+}
+function draw() {
+  var c = G.c, g = G.x;
+  g.fillStyle = "#1b1146"; g.fillRect(0, 0, c * G.C, c * G.R);
+  g.font = "bold " + Math.floor(c * 0.6) + "px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+  G.f.forEach(function (o) { g.fillStyle = "#fff"; g.fillRect(o.x * c + 1, o.y * c + 1, c - 2, c - 2); g.fillStyle = "#2d1b78"; g.fillText(o.v, o.x * c + c / 2, o.y * c + c / 2); });
+  G.s.forEach(function (p, i) { g.fillStyle = i ? "#22c55e" : "#bbf7d0"; g.fillRect(p[0] * c + 1, p[1] * c + 1, c - 2, c - 2); });
+}
+function snakeEnd() {
+  stopAll();
+  resultView("🐍", G.n + " ta to‘g‘ri", "+" + G.n * 2 * (PREMIUM ? 2 : 1) + " tanga", "snakeStart", "home");
+}
+
+var T = {};
+function tugStart() {
+  if (!gate()) return;
+  stopAll(); playing = true; T = { p: 0, lock: false, over: false };
+  tugQ();
+  timers.push(setInterval(function () { if (T.over) return; T.p--; tugRope(); }, 3500));
+}
+function tugQ() {
+  if (T.over) return;
+  var q = mathQ(); T.q = q; T.lock = false;
+  var h = backBtn("home()") + '<div class="rope"><span>🧒</span><div class="track"><i id="fl">🚩</i></div><span>🤖</span></div><div class="q">' + q.p + '</div>';
+  q.o.forEach(function (v, k) { h += '<button class="opt" id="t' + k + '" onclick="tugPick(' + k + ')">' + v + '</button>'; });
+  view(h); tugRope();
+}
+function tugRope() {
+  if ($("fl")) $("fl").style.left = (5 - T.p) * 10 + "%";
+  if (T.p >= 5 || T.p <= -5) tugEnd(T.p >= 5);
+}
+function tugPick(k) {
+  if (T.lock || T.over) return; T.lock = true;
+  var ok = k === T.q.a;
+  $("t" + k).className = "opt " + (ok ? "ok" : "no");
+  if (!ok) $("t" + T.q.a).className = "opt ok";
+  if (ok) { T.p++; add(1); } else T.p--;
+  tugRope();
+  if (!T.over) timers.push(setTimeout(tugQ, 700));
+}
+function tugEnd(win) {
+  T.over = true; stopAll();
+  if (win) add(10);
+  resultView(win ? "🏆" : "🤖", win ? "Siz yutdingiz!" : "Kompyuter yutdi", win ? "+10 tanga bonus" : "Yana urinib ko‘ring", "tugStart", "home");
+}
+
 /* ---------- Reyting va profil ---------- */
 function ranking() {
   var L = [["Aziza", 1240], ["Jasur", 980], ["Madina", 760], ["Bobur", 540], ["Dilnoza", 320], ["Siz", S.coins]];
@@ -283,4 +380,4 @@ function profile() {
 head(); nav("games");
 </script>
 </body>
-  </html>
+</html>
